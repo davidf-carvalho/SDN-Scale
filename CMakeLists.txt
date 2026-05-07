@@ -6,7 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Main executable
-add_executable(main src/main.cpp src/avl/AVLTree.cpp)
+add_executable(main
+    src/main.cpp
+    src/avl/AVLTree.cpp
+    src/rbt/RedBlackTree.cpp
+)
 target_include_directories(main PRIVATE src)
-
-# Tests and benchmark targets omitted until implementations are added
