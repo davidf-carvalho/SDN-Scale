@@ -148,4 +148,6 @@ private:
     void destroy_rec(Node* n) noexcept;
 };
 
+void validateAVL(const AVLTree& tree);
+
 } // namespace sdn

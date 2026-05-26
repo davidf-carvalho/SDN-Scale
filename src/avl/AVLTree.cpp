@@ -1,21 +1,8 @@
 #include "AVLTree.hpp"
+#include <stdexcept>
 #include <utility>
 
 namespace sdn {
-
-int AVLTree::node_height(const Node* n) {
-    return n ? n->height : 0;
-}
-
-int AVLTree::balance_factor(const Node* n) {
-    return node_height(n->left) - node_height(n->right);
-}
-
-void AVLTree::update_height(Node* n) {
-    int lh = node_height(n->left);
-    int rh = node_height(n->right);
-    n->height = 1 + (lh > rh ? lh : rh);
-}
 
 AVLTree::AVLTree(size_t reserve)
     : root_(nullptr), size_(0), rotations_(0)
@@ -28,7 +15,7 @@ AVLTree::~AVLTree() {
     for (Node* n : free_list_) delete n;
 }
 
-AVLTree::AVLTree(AVLTree&& o)
+AVLTree::AVLTree(AVLTree&& o) noexcept
     : root_(o.root_), size_(o.size_), rotations_(o.rotations_),
       free_list_(std::move(o.free_list_))
 {
@@ -37,7 +24,7 @@ AVLTree::AVLTree(AVLTree&& o)
     o.rotations_ = 0;
 }
 
-AVLTree& AVLTree::operator=(AVLTree&& o) {
+AVLTree& AVLTree::operator=(AVLTree&& o) noexcept {
     if (this != &o) {
         clear();
         for (Node* n : free_list_) delete n;
@@ -65,11 +52,11 @@ AVLTree::Node* AVLTree::alloc_node(const PacketRule& rule) {
     return new Node(rule);
 }
 
-void AVLTree::release_node(Node* n) {
+void AVLTree::release_node(Node* n) noexcept {
     free_list_.push_back(n);
 }
 
-AVLTree::Node* AVLTree::rotate_right(Node* y) {
+AVLTree::Node* AVLTree::rotate_right(Node* y) noexcept {
     Node* x = y->left;
     Node* T2 = x->right;
     x->right = y;
@@ -80,7 +67,7 @@ AVLTree::Node* AVLTree::rotate_right(Node* y) {
     return x;
 }
 
-AVLTree::Node* AVLTree::rotate_left(Node* x) {
+AVLTree::Node* AVLTree::rotate_left(Node* x) noexcept {
     Node* y = x->right;
     Node* T2 = y->left;
     y->left = x;
@@ -91,7 +78,7 @@ AVLTree::Node* AVLTree::rotate_left(Node* x) {
     return y;
 }
 
-AVLTree::Node* AVLTree::rebalance(Node* n) {
+AVLTree::Node* AVLTree::rebalance(Node* n) noexcept {
     update_height(n);
     int fb = balance_factor(n);
 
@@ -136,7 +123,7 @@ void AVLTree::insert(const PacketRule& rule) {
     if (inserted) ++size_;
 }
 
-const PacketRule* AVLTree::search_rec(const Node* n, uint32_t id) {
+const PacketRule* AVLTree::search_rec(const Node* n, uint32_t id) noexcept {
     while (n) {
         if (id < n->rule.id) n = n->left;
         else if (id > n->rule.id) n = n->right;
@@ -145,16 +132,16 @@ const PacketRule* AVLTree::search_rec(const Node* n, uint32_t id) {
     return nullptr;
 }
 
-const PacketRule* AVLTree::search(uint32_t id) const {
+const PacketRule* AVLTree::search(uint32_t id) const noexcept {
     return search_rec(root_, id);
 }
 
-AVLTree::Node* AVLTree::min_node(Node* n) {
+AVLTree::Node* AVLTree::min_node(Node* n) noexcept {
     while (n->left) n = n->left;
     return n;
 }
 
-AVLTree::Node* AVLTree::remove_rec(Node* n, uint32_t id, bool& removed) {
+AVLTree::Node* AVLTree::remove_rec(Node* n, uint32_t id, bool& removed) noexcept {
     if (!n) return nullptr;
 
     if (id < n->rule.id) {
@@ -176,18 +163,18 @@ AVLTree::Node* AVLTree::remove_rec(Node* n, uint32_t id, bool& removed) {
     return rebalance(n);
 }
 
-bool AVLTree::remove(uint32_t id) {
+bool AVLTree::remove(uint32_t id) noexcept {
     bool removed = false;
     root_ = remove_rec(root_, id, removed);
     if (removed) --size_;
     return removed;
 }
 
-int AVLTree::height() const {
+int AVLTree::height() const noexcept {
     return node_height(root_);
 }
 
-bool AVLTree::validate_rec(const Node* n, int& height) {
+bool AVLTree::validate_rec(const Node* n, int& height) noexcept {
     if (!n) {
         height = 0;
         return true;
@@ -207,22 +194,28 @@ bool AVLTree::validate_rec(const Node* n, int& height) {
     return true;
 }
 
-bool AVLTree::validate() const {
+bool AVLTree::validate() const noexcept {
     int h = 0;
     return validate_rec(root_, h);
 }
 
-void AVLTree::destroy_rec(Node* n) {
+void AVLTree::destroy_rec(Node* n) noexcept {
     if (!n) return;
     destroy_rec(n->left);
     destroy_rec(n->right);
     release_node(n);
 }
 
-void AVLTree::clear() {
+void AVLTree::clear() noexcept {
     destroy_rec(root_);
     root_ = nullptr;
     size_ = 0;
+}
+
+void validateAVL(const AVLTree& tree) {
+    if (!tree.validate()) {
+        throw std::logic_error("AVL invariant violation");
+    }
 }
 
 } // namespace sdn

@@ -1,5 +1,6 @@
 #include "RedBlackTree.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 namespace sdn {
@@ -386,8 +387,9 @@ bool RedBlackTree::validate_rec(const Node* n, int& bh) const noexcept {
 }
 
 bool RedBlackTree::validate() const noexcept {
+    if (!nil_ || nil_->red) return false;          // Prop 3
+    if (root_ == nullptr) return false;
     if (root_ != nil_ && root_->red) return false; // Prop 2
-    // Prop 3 é garantida pela construção do NIL sentinela
     int bh = 0;
     return validate_rec(root_, bh);
 }
@@ -408,6 +410,12 @@ void RedBlackTree::clear() noexcept {
     root_ = nil_;
     size_ = 0;
     // rotations_ é acumulado — não resetar intencionalmente
+}
+
+void validateRBT(const RedBlackTree& tree) {
+    if (!tree.validate()) {
+        throw std::logic_error("Red-Black Tree invariant violation");
+    }
 }
 
 } // namespace sdn

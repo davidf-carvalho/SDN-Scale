@@ -134,4 +134,6 @@ private:
     void destroy_rec (Node* n)                          noexcept;
 };
 
+void validateRBT(const RedBlackTree& tree);
+
 } // namespace sdn
