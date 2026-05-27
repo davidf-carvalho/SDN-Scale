@@ -13,6 +13,13 @@ add_executable(main
 )
 target_include_directories(main PRIVATE src)
 
+add_executable(benchmark
+    benchmark/main.cpp
+    src/avl/AVLTree.cpp
+    src/rbt/RedBlackTree.cpp
+)
+target_include_directories(benchmark PRIVATE src)
+
 enable_testing()
 
 find_package(GTest CONFIG QUIET)
