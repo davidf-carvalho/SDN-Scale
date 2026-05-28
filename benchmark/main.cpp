@@ -7,6 +7,7 @@
 #include <iostream>
 #include <numeric>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -200,6 +201,27 @@ void populate(Tree& tree, const std::vector<sdn::PacketRule>& rules) {
 }
 
 template <typename Tree>
+void validate_or_throw(const Tree& tree,
+                       const std::string& scenario,
+                       const std::string& operation,
+                       const std::string& structure,
+                       std::size_t run_id,
+                       std::size_t processed) {
+    if (tree.validate()) {
+        return;
+    }
+
+    std::ostringstream message;
+    message << structure
+            << " invariant failure"
+            << " scenario=" << scenario
+            << " operation=" << operation
+            << " run=" << run_id
+            << " processed=" << processed;
+    throw std::runtime_error(message.str());
+}
+
+template <typename Tree>
 void benchmark_insert(const std::string& scenario,
                       const std::string& structure,
                       const std::vector<sdn::PacketRule>& rules,
@@ -222,11 +244,10 @@ void benchmark_insert(const std::string& scenario,
                     elapsed,
                     tree.rotation_count() - rotation_start,
                     run_id);
+            validate_or_throw(tree, scenario, "insert", structure, run_id, inserted);
         }
     }
-    if (!tree.validate()) {
-        throw std::runtime_error(structure + " failed validation after insert");
-    }
+    validate_or_throw(tree, scenario, "insert", structure, run_id, rules.size());
 }
 
 template <typename Tree>
@@ -239,9 +260,7 @@ void benchmark_search(const std::string& scenario,
                       CsvWriter& csv) {
     Tree tree(rules.size());
     populate(tree, rules);
-    if (!tree.validate()) {
-        throw std::runtime_error(structure + " failed validation before search");
-    }
+    validate_or_throw(tree, scenario, "search", structure, run_id, 0);
 
     std::size_t found = 0;
     const auto start = Clock::now();
@@ -253,6 +272,7 @@ void benchmark_search(const std::string& scenario,
         if (searched % step == 0 || searched == search_ids.size()) {
             const auto elapsed = std::chrono::duration_cast<Ns>(Clock::now() - start).count();
             csv.row(scenario, "search", structure, searched, elapsed, 0, run_id);
+            validate_or_throw(tree, scenario, "search", structure, run_id, searched);
         }
     }
 
@@ -271,6 +291,7 @@ void benchmark_delete(const std::string& scenario,
                       CsvWriter& csv) {
     Tree tree(rules.size());
     populate(tree, rules);
+    validate_or_throw(tree, scenario, "delete", structure, run_id, 0);
     const auto rotation_start = tree.rotation_count();
     const auto start = Clock::now();
 
@@ -288,12 +309,11 @@ void benchmark_delete(const std::string& scenario,
                     elapsed,
                     tree.rotation_count() - rotation_start,
                     run_id);
+            validate_or_throw(tree, scenario, "delete", structure, run_id, removed);
         }
     }
 
-    if (!tree.validate()) {
-        throw std::runtime_error(structure + " failed validation after delete");
-    }
+    validate_or_throw(tree, scenario, "delete", structure, run_id, delete_ids.size());
 }
 
 void run_structure_benchmarks(const std::string& scenario,

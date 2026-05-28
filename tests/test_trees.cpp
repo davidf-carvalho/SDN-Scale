@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <algorithm>
 #include <cstdint>
 #include <initializer_list>
+#include <vector>
 
 #include "avl/AVLTree.hpp"
 #include "rbt/RedBlackTree.hpp"
@@ -26,6 +28,51 @@ void insertIncreasingAndValidate(Tree& tree, Validator validate) {
         EXPECT_EQ(tree.size(), id);
         ASSERT_NE(tree.search(id), nullptr);
     }
+}
+
+template <typename Tree>
+void expectPresentExcept(const Tree& tree,
+                         const std::vector<uint32_t>& allIds,
+                         const std::vector<uint32_t>& removedIds) {
+    for (uint32_t id : allIds) {
+        const bool removed = std::find(removedIds.begin(), removedIds.end(), id) != removedIds.end();
+        if (removed) {
+            EXPECT_EQ(tree.search(id), nullptr);
+        } else {
+            const sdn::PacketRule* rule = tree.search(id);
+            ASSERT_NE(rule, nullptr);
+            EXPECT_EQ(rule->id, id);
+        }
+    }
+}
+
+template <typename Tree, typename Validator>
+void removeSequenceAndValidate(Tree& tree,
+                               Validator validate,
+                               const std::vector<uint32_t>& allIds,
+                               const std::vector<uint32_t>& removeIds) {
+    for (uint32_t id : allIds) {
+        tree.insert(makeRule(id));
+    }
+
+    std::vector<uint32_t> removedIds;
+    removedIds.reserve(removeIds.size());
+    std::size_t expectedSize = allIds.size();
+
+    for (uint32_t id : removeIds) {
+        SCOPED_TRACE(id);
+        EXPECT_TRUE(tree.remove(id));
+        removedIds.push_back(id);
+        --expectedSize;
+
+        EXPECT_EQ(tree.size(), expectedSize);
+        EXPECT_NO_THROW(validate(tree));
+        expectPresentExcept(tree, allIds, removedIds);
+    }
+
+    EXPECT_FALSE(tree.remove(999));
+    EXPECT_EQ(tree.size(), expectedSize);
+    EXPECT_NO_THROW(validate(tree));
 }
 
 } // namespace
@@ -88,6 +135,31 @@ TEST(AVLTreeQA, ValidatesAfterBasicRemovals) {
     EXPECT_NO_THROW(sdn::validateAVL(tree));
 }
 
+TEST(AVLTreeQA, RemovesRootAndKeepsRemainingNodesSearchable) {
+    sdn::AVLTree tree;
+    const std::vector<uint32_t> ids = {10, 5, 15, 3, 7, 12, 18};
+
+    removeSequenceAndValidate(tree, sdn::validateAVL, ids, {10});
+}
+
+TEST(AVLTreeQA, ValidatesAfterLargerShuffledRemovalSequence) {
+    sdn::AVLTree tree(64);
+    std::vector<uint32_t> ids;
+    ids.reserve(64);
+    for (uint32_t id = 1; id <= 64; ++id) {
+        ids.push_back(id);
+    }
+
+    const std::vector<uint32_t> removalOrder = {
+        32, 1, 64, 16, 48, 8, 24, 40, 56, 4, 12, 20, 28, 36, 44, 52, 60,
+        2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62,
+        3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31,
+        33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63,
+    };
+
+    removeSequenceAndValidate(tree, sdn::validateAVL, ids, removalOrder);
+}
+
 TEST(RedBlackTreeQA, ValidatesAfterEachIncreasingInsert) {
     sdn::RedBlackTree tree(50);
 
@@ -146,4 +218,29 @@ TEST(RedBlackTreeQA, ValidatesAfterBasicRemovals) {
     }
     EXPECT_FALSE(tree.remove(999));
     EXPECT_NO_THROW(sdn::validateRBT(tree));
+}
+
+TEST(RedBlackTreeQA, RemovesRootAndKeepsRemainingNodesSearchable) {
+    sdn::RedBlackTree tree;
+    const std::vector<uint32_t> ids = {10, 5, 15, 3, 7, 12, 18};
+
+    removeSequenceAndValidate(tree, sdn::validateRBT, ids, {10});
+}
+
+TEST(RedBlackTreeQA, ValidatesAfterLargerShuffledRemovalSequence) {
+    sdn::RedBlackTree tree(64);
+    std::vector<uint32_t> ids;
+    ids.reserve(64);
+    for (uint32_t id = 1; id <= 64; ++id) {
+        ids.push_back(id);
+    }
+
+    const std::vector<uint32_t> removalOrder = {
+        32, 1, 64, 16, 48, 8, 24, 40, 56, 4, 12, 20, 28, 36, 44, 52, 60,
+        2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62,
+        3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31,
+        33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63,
+    };
+
+    removeSequenceAndValidate(tree, sdn::validateRBT, ids, removalOrder);
 }
